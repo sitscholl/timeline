@@ -34,8 +34,8 @@ gsheet = client.open("Feldaufnahmen")
 tbl = get_as_dataframe(gsheet.worksheet('Wiesen'), na_values = 'NA', evaluate_formulas=True)
 tbl = tbl[['Reihenfolge', 'Jahr', 'Wiese', 'Sorte', 'Sortengruppe', '_Ernte [h]', '_Kisten [n]', '_Ertrag [kg]']]
 tbl.replace('NA', np.nan, inplace = True)
-tbl['_Kisten [n]'] = tbl['_Kisten [n]'].astype(int)
-tbl['_Ertrag [kg]'] = tbl['_Ertrag [kg]'].astype(int)
+tbl['_Kisten [n]'] = tbl['_Kisten [n]'].round(1)
+tbl['_Ertrag [kg]'] = tbl['_Ertrag [kg]'].round(1)
 tbl.dropna(how = 'all', axis = 1, inplace = True)
 
 ####Filter
