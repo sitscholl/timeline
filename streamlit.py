@@ -32,7 +32,7 @@ client = gspread.service_account_from_dict(creds, scope)
 ####Load gsheets table and reformat
 gsheet = client.open("Feldaufnahmen")
 tbl = get_as_dataframe(gsheet.worksheet('Wiesen'), na_values = 'NA', evaluate_formulas=True)
-tbl = tbl[['Reihenfolge', 'Jahr', 'Wiese', 'Sorte', 'Sortengruppe', '_Ernte [h]']]
+tbl = tbl[['Reihenfolge', 'Jahr', 'Wiese', 'Sorte', 'Sortengruppe', '_Ernte [h]', '_Kisten [n]', '_Ertrag [kg]']]
 tbl.replace('NA', np.nan, inplace = True)
 tbl.dropna(how = 'all', axis = 1, inplace = True)
 
@@ -74,7 +74,9 @@ tbl_plot['End Date'] = tbl_plot['Start Date'] + pd.to_timedelta(tbl_plot['Dauer'
 fig = px.timeline(tbl_plot, x_start="Start Date", x_end="End Date", y="ylab",
                   hover_name = 'ylab',
                   hover_data = {'ylab': False,
-                                'Dauer': True}) #Add kisten + erntemenge?
+                                'Dauer': True,
+                                '_Kisten [n]': True,
+                                '_Ertrag [kg]': True})
 ##Format x-axis
 fig.update_xaxes(showgrid = True,
                  ticks= "outside",
