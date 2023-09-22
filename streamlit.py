@@ -22,8 +22,7 @@ import json
 #estart = get_estart()
 
 ####
-with open('gkey.json') as json_file:
-    creds = json.load(json_file)
+creds = st.secrets['gcp_service_account']
 ####
 
 ####Connect to google account
