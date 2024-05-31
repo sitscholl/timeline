@@ -5,6 +5,10 @@ Created on Fri Sep 22 09:46:30 2023
 @author: sitscholl
 """
 
+##To dos:
+# Add column "Pflückgänge" and explode table if multiple pflückgänge. Use a list in Reihenfolge to determine order
+# Add two tabs: Zupfen und Ernte with two timelines
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -15,12 +19,8 @@ import plotly.express as px
 import gspread
 from gspread_dataframe import get_as_dataframe
 import datetime
-import json
-
-# @st.cache_data(persist = True)
-# def get_estart():
-#    return(datetime.date(2023, 9, 15))
-# estart = get_estart()
+from datetime import timedelta
+from collections import defaultdict
 
 ####
 creds = st.secrets["gcp_service_account"]
@@ -65,41 +65,94 @@ if "Reihenfolge" not in tbl.columns:
     tbl["Reihenfolge"] = tbl.index + 1
 tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
 
-####Params fields
+####Input fields
 with st.expander("Edit params"):
     estart = st.date_input("Erntebeginn", value=datetime.date(2023, 9, 18))
     n_people = st.number_input("Arbeiter", value=9.0, min_value=0.0, step=0.5)
-    n_stunden = st.number_input(
-        "Arbeitsstunden pro Tag", value=9.5, min_value=0.0, max_value=24.0, step=0.5
+
+    _HOUR_START = st.number_input(
+        "Arbeitsbeginn", value=8.0, min_value=0.0, max_value=23.0
+    )
+    _HOUR_END = st.number_input(
+        "Arbeitsende", value=19.0, min_value=0.0, max_value=23.0
+    )
+    _BREAKS = st.number_input(
+        "Dauer Mittagspause", value=1.5, min_value=0.0, max_value=23.0
     )
 
-# st.write(estart_in)
-# if estart_in is not None:
-#    estart = estart_in
-# st.write(estart)
+if _HOUR_END < _HOUR_START:
+    raise ValueError("Arbeitsende kann nicht vor Arbeitsbeginn sein!")
 
-stunden_tag = n_people * n_stunden
+#### Compute variables
+n_stunden = (_HOUR_END - _HOUR_START) - _BREAKS
+
+workh_dict = defaultdict(lambda: n_stunden)
+workh_dict[6] = n_stunden
+
+_HOUR_START_INT = int(_HOUR_START)
+_MINUTES_START_INT = int((_HOUR_START * 60) % 60)
+estart = datetime.datetime(
+    estart.year, estart.month, estart.day, _HOUR_START_INT, _MINUTES_START_INT, 0
+)
+st.write(f"Start date: {estart}")
 
 ####Editable Dataframe
 with st.expander("Edit data"):
     tbl_plot = st.data_editor(
         tbl, disabled=[i for i in tbl.columns if i != "Reihenfolge"]
     )
+
+####Prepare columns for End Date calculation and plotting
 tbl_plot["ylab"] = tbl_plot["Wiese"] + " (" + tbl_plot["Sorte"] + ")"
 tbl_plot.sort_values("Reihenfolge", inplace=True)
 
-tbl_plot["Dauer"] = tbl_plot["_Ernte [h]"] / stunden_tag
-tbl_plot["Dauer"] = 0.5 * np.round(tbl_plot["Dauer"] / 0.5)  ##round to .5
-tbl_plot["Dauer"] = tbl_plot["Dauer"].clip(lower=0.5)
+# st.write(tbl_plot)
 
-tbl_plot["Start Date"] = pd.to_datetime(estart) + pd.to_timedelta(
-    tbl_plot["Dauer"].shift(1).fillna(0).cumsum(), unit="D"
-)
-tbl_plot["End Date"] = tbl_plot["Start Date"] + pd.to_timedelta(
-    tbl_plot["Dauer"], unit="D"
-)
+# st.write(f"Start date: {estart}")
 
-####Plot
+end_dates = []
+curr_date = estart
+
+####Main loop: Loop over table and calculate end time for each field, based on working hours per day and number of workers
+for nam, h in zip(tbl_plot["ylab"], tbl_plot["_Ernte [h]"]):
+
+    # st.write(f"Required hours for field {nam}: {h/n_people}")
+    while h > 0:
+
+        # Available working hours on current date until feierabend
+        # If hour <= 12: Mittagspause mit einbeziehen
+        if curr_date.hour <= 12:
+            working_hours = _HOUR_END - curr_date.hour - curr_date.minute / 60 - _BREAKS
+        else:
+            working_hours = _HOUR_END - curr_date.hour - curr_date.minute / 60
+
+        # Total work equivalent for current day
+        working_hours_tot = working_hours * n_people
+
+        # If field requires more hours than available for this day: proceed to next day at _HOUR_START
+        if h > working_hours_tot:
+            curr_date = (curr_date + timedelta(days=1)).replace(
+                hour=_HOUR_START_INT, minute=_MINUTES_START_INT, second=0
+            )
+        # Otherwise add remaining hours for field to current day
+        else:
+            curr_date += timedelta(hours=(h / n_people))
+
+        # Subtract hours done on this day
+        h -= working_hours_tot
+
+    # Round end date to nearest hour
+    hour_round = round(curr_date.hour + curr_date.minute / 60 + curr_date.second / 3600)
+    curr_date = curr_date.replace(hour=hour_round, minute=0, second=0, microsecond=0)
+
+    # Append to list
+    end_dates.append(curr_date)
+
+#### Add columns to dataframe
+tbl_plot["End Date"] = end_dates
+tbl_plot["Start Date"] = tbl_plot["End Date"].shift(1).fillna(estart)
+
+#### Timeline plot
 fig = px.timeline(
     tbl_plot,
     x_start="Start Date",
@@ -108,12 +161,12 @@ fig = px.timeline(
     hover_name="ylab",
     hover_data={
         "ylab": False,
-        "Dauer": True,
+        "_Ernte [h]": True,
         "_Kisten [n]": True,
         "_Ertrag [kg]": True,
     },
 )
-##Format x-axis
+#### Format x-axis
 fig.update_xaxes(
     showgrid=True,
     ticks="outside",
@@ -129,10 +182,11 @@ fig.update_xaxes(
     ),
 )
 
-# Format y-axis
+#### Format y-axis
 fig.update_yaxes(title="")
 
-##Add red line for today
+#### Add red line for today
 fig.add_vline(x=pd.to_datetime("2023-09-18", format="%Y-%m-%d"), line_color="Red")  #
 
+#### Render plot
 st.plotly_chart(fig)
