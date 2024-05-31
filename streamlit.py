@@ -133,6 +133,6 @@ fig.update_xaxes(
 fig.update_yaxes(title="")
 
 ##Add red line for today
-fig.add_vline(x=pd.to_datetime("2024-09-18", format="%Y-%m-%d"), line_color="Red")  #
+fig.add_vline(x=pd.to_datetime("2023-09-18", format="%Y-%m-%d"), line_color="Red")  #
 
 st.plotly_chart(fig)
