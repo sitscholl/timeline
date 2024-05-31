@@ -35,37 +35,7 @@ scope = [
 ]
 client = gspread.service_account_from_dict(creds, scope)
 
-####Load gsheets table and reformat
-gsheet = client.open("Feldaufnahmen")
-tbl = get_as_dataframe(
-    gsheet.worksheet("Wiesen"), na_values="NA", evaluate_formulas=True
-)
-tbl = tbl[
-    [
-        "Reihenfolge",
-        "Jahr",
-        "Wiese",
-        "Sorte",
-        "Sortengruppe",
-        "_Ernte [h]",
-        "_Kisten [n]",
-        "_Ertrag [kg]",
-    ]
-]
-tbl.replace("NA", np.nan, inplace=True)
-tbl["_Kisten [n]"] = tbl["_Kisten [n]"].round(1)
-tbl["_Ertrag [kg]"] = tbl["_Ertrag [kg]"].round(1)
-tbl.dropna(how="all", axis=1, inplace=True)
-
-####Filter
-tbl = tbl.loc[(tbl["Sortengruppe"] == "Hauptsorte") & (tbl["Jahr"] == 2023)]
-
-####Add column Reihenfolge
-if "Reihenfolge" not in tbl.columns:
-    tbl["Reihenfolge"] = tbl.index + 1
-tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
-
-####Input fields
+#### Input fields
 with st.expander("Edit params"):
     estart = st.date_input("Erntebeginn", value=datetime.date(2023, 9, 18))
     n_people = st.number_input("Arbeiter", value=9.0, min_value=0.0, step=0.5)
@@ -96,6 +66,55 @@ estart = datetime.datetime(
 )
 st.write(f"Start date: {estart}")
 
+####Load gsheets table and reformat
+gsheet = client.open("Feldaufnahmen")
+tbl = get_as_dataframe(
+    gsheet.worksheet("Wiesen"), na_values="NA", evaluate_formulas=True
+)
+tbl = tbl[
+    [
+        "Reihenfolge",
+        "Jahr",
+        "Wiese",
+        "Sorte",
+        "Sortengruppe",
+        "_Zupfen [h]",
+        "_Ernte [h]",
+        "_Kisten [n]",
+        "_Ertrag [kg]",
+    ]
+]
+tbl.replace("NA", np.nan, inplace=True)
+tbl["_Kisten [n]"] = tbl["_Kisten [n]"].round(1)
+tbl["_Ertrag [kg]"] = tbl["_Ertrag [kg]"].round(1)
+tbl.dropna(how="all", axis=1, inplace=True)
+
+####Filter
+tbl = tbl.loc[(tbl["Sortengruppe"] == "Hauptsorte") & (tbl["Jahr"] == 2023)]
+
+#### Fill missing values
+for c in ["_Zupfen [h]", "_Ernte [h]"]:
+    n_na = tbl[c].isna().sum()
+    if n_na > 0:
+        tbl[c] = tbl[c].fillna(n_stunden * n_people)
+        st.warning(f"Filled {n_na} missing values for column {c}")
+
+####Add column Reihenfolge
+if "Reihenfolge" not in tbl.columns:
+    tbl["Reihenfolge"] = tbl.index + 1
+tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
+tbl.sort_values("Reihenfolge", inplace=True)
+
+####Add unique Name for each field
+tbl["ylab"] = (
+    tbl["Reihenfolge"].astype(int).astype(str)
+    + " "
+    + tbl["Wiese"]
+    + " ("
+    + tbl["Sorte"]
+    + ")"
+)
+
 ####Editable Dataframe
 with st.expander("Edit data"):
     tbl_plot = st.data_editor(
@@ -103,17 +122,11 @@ with st.expander("Edit data"):
     )
 
 ####Prepare columns for End Date calculation and plotting
-tbl_plot["ylab"] = tbl_plot["Wiese"] + " (" + tbl_plot["Sorte"] + ")"
 tbl_plot.sort_values("Reihenfolge", inplace=True)
 
-# st.write(tbl_plot)
-
-# st.write(f"Start date: {estart}")
-
+####Main loop: Loop over table and calculate end time for each field, based on working hours per day and number of workers
 end_dates = []
 curr_date = estart
-
-####Main loop: Loop over table and calculate end time for each field, based on working hours per day and number of workers
 for nam, h in zip(tbl_plot["ylab"], tbl_plot["_Ernte [h]"]):
 
     # st.write(f"Required hours for field {nam}: {h/n_people}")
