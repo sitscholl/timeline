@@ -8,6 +8,7 @@ Created on Fri Sep 22 09:46:30 2023
 ##To dos:
 # Add column "Pflückgänge" and explode table if multiple pflückgänge. Use a list in Reihenfolge to determine order
 # Add two tabs: Zupfen und Ernte with two timelines
+# Save modifications to input fields for next session
 
 import streamlit as st
 import pandas as pd
@@ -21,6 +22,8 @@ from gspread_dataframe import get_as_dataframe
 import datetime
 from datetime import timedelta
 from collections import defaultdict
+
+st.set_page_config("Timeline", initial_sidebar_state="collapsed")
 
 ####
 creds = st.secrets["gcp_service_account"]
@@ -36,24 +39,26 @@ scope = [
 client = gspread.service_account_from_dict(creds, scope)
 
 #### Input fields
-with st.expander("Edit params"):
-    estart = st.date_input("Erntebeginn", value=datetime.date(2023, 9, 18))
+type = st.selectbox("Arbeit auswählen", ("Zupfen", "Ernte"))
+estart = st.date_input("Erntebeginn", value=datetime.date(2023, 9, 18))
+with st.sidebar:
     n_people = st.number_input("Arbeiter", value=9.0, min_value=0.0, step=0.5)
 
     _HOUR_START = st.number_input(
-        "Arbeitsbeginn", value=8.0, min_value=0.0, max_value=23.0
+        "Arbeitsbeginn [Stunde]", value=8.0, min_value=0.0, max_value=23.0
     )
     _HOUR_END = st.number_input(
-        "Arbeitsende", value=19.0, min_value=0.0, max_value=23.0
+        "Arbeitsende [Stunde]", value=19.0, min_value=0.0, max_value=23.0
     )
     _BREAKS = st.number_input(
-        "Dauer Mittagspause", value=1.5, min_value=0.0, max_value=23.0
+        "Dauer Mittagspause [Stunden]", value=1.5, min_value=0.0, max_value=23.0
     )
 
 if _HOUR_END < _HOUR_START:
     raise ValueError("Arbeitsende kann nicht vor Arbeitsbeginn sein!")
 
 #### Compute variables
+dur_col = {"Zupfen": "_Zupfen [h]", "Ernte": "_Ernte [h]"}[type]
 n_stunden = (_HOUR_END - _HOUR_START) - _BREAKS
 
 workh_dict = defaultdict(lambda: n_stunden)
@@ -123,11 +128,14 @@ with st.expander("Edit data"):
 
 ####Prepare columns for End Date calculation and plotting
 tbl_plot.sort_values("Reihenfolge", inplace=True)
+tbl_plot[f"{dur_col}_re"] = (tbl_plot[dur_col] / (n_people * n_stunden)).round(
+    2
+).astype(str) + " days"
 
 ####Main loop: Loop over table and calculate end time for each field, based on working hours per day and number of workers
 end_dates = []
 curr_date = estart
-for nam, h in zip(tbl_plot["ylab"], tbl_plot["_Ernte [h]"]):
+for h in tbl_plot[dur_col]:
 
     # st.write(f"Required hours for field {nam}: {h/n_people}")
     while h > 0:
@@ -174,7 +182,7 @@ fig = px.timeline(
     hover_name="ylab",
     hover_data={
         "ylab": False,
-        "_Ernte [h]": True,
+        f"{dur_col}_re": True,
         "_Kisten [n]": True,
         "_Ertrag [kg]": True,
     },
