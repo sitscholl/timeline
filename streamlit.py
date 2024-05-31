@@ -39,7 +39,14 @@ scope = [
 client = gspread.service_account_from_dict(creds, scope)
 
 #### Input fields
-type = st.selectbox("Arbeit auswählen", ("Zupfen", "Ernte"))
+type = st.selectbox(
+    "Arbeit auswählen",
+    options=(
+        ("Zupfen", "Ernte")
+        if datetime.datetime.today().month < 8
+        else ("Ernte", "Zupfen")
+    ),
+)
 estart = st.date_input("Erntebeginn", value=datetime.date(2023, 9, 18))
 with st.sidebar:
     n_people = st.number_input("Arbeiter", value=9.0, min_value=0.0, step=0.5)
@@ -207,7 +214,9 @@ fig.update_xaxes(
 fig.update_yaxes(title="")
 
 #### Add red line for today
-fig.add_vline(x=pd.to_datetime("2023-09-18", format="%Y-%m-%d"), line_color="Red")  #
+fig.add_vline(
+    x=datetime.datetime.today(), line_color="Red"
+)  # pd.to_datetime("2023-09-18", format="%Y-%m-%d")
 
 #### Render plot
 st.plotly_chart(fig)
