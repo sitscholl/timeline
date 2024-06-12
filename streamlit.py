@@ -47,19 +47,23 @@ type = st.selectbox(
         else ("Ernte", "Zupfen")
     ),
 )
-estart = st.date_input("Erntebeginn", value=datetime.date(2023, 9, 18))
+estart = st.date_input("Erntebeginn", value=datetime.date(2024, 6, 14))
 with st.sidebar:
-    n_people = st.number_input("Arbeiter", value=9.0, min_value=0.0, step=0.5)
+    n_people = st.number_input(
+        "Arbeiter", value=9.0 if type == "Ernte" else 4.0, min_value=0.0, step=0.5
+    )
 
     _HOUR_START = st.number_input(
-        "Arbeitsbeginn [Stunde]", value=8.0, min_value=0.0, max_value=23.0
+        "Arbeitsbeginn [Stunde]", value=7.5, min_value=0.0, max_value=23.0
     )
     _HOUR_END = st.number_input(
-        "Arbeitsende [Stunde]", value=19.0, min_value=0.0, max_value=23.0
+        "Arbeitsende [Stunde]", value=18.0, min_value=0.0, max_value=23.0
     )
     _BREAKS = st.number_input(
         "Dauer Mittagspause [Stunden]", value=1.5, min_value=0.0, max_value=23.0
     )
+
+    st.write(f"Tägliche Arbeitsstunden: {(_HOUR_END - _HOUR_START) - _BREAKS}h")
 
 if _HOUR_END < _HOUR_START:
     raise ValueError("Arbeitsende kann nicht vor Arbeitsbeginn sein!")
@@ -87,9 +91,11 @@ tbl = tbl[
     [
         "Reihenfolge",
         "Jahr",
-        "Wiese",
+        "Wiesenabschnitt",
         "Sorte",
         "Sortengruppe",
+        "Zupfen [h]",
+        "Ernte [h]",
         "_Zupfen [h]",
         "_Ernte [h]",
         "_Kisten [n]",
@@ -101,27 +107,41 @@ tbl["_Kisten [n]"] = tbl["_Kisten [n]"].round(1)
 tbl["_Ertrag [kg]"] = tbl["_Ertrag [kg]"].round(1)
 tbl.dropna(how="all", axis=1, inplace=True)
 
-####Filter
-tbl = tbl.loc[(tbl["Sortengruppe"] == "Hauptsorte") & (tbl["Jahr"] == 2023)]
-
 #### Fill missing values
+tbl_mean = (
+    tbl.loc[(tbl["Jahr"] >= 2023)]
+    .groupby(["Wiesenabschnitt", "Sorte"])[["Zupfen [h]", "Ernte [h]"]]
+    .mean()
+)
+
+####Filter
+tbl = tbl.loc[(tbl["Jahr"] == 2024)]  # (tbl["Sortengruppe"] == "Hauptsorte") &
+tbl.set_index(["Wiesenabschnitt", "Sorte"], inplace=True)
+
+##### Fill missing values
 for c in ["_Zupfen [h]", "_Ernte [h]"]:
-    n_na = tbl[c].isna().sum()
-    if n_na > 0:
-        tbl[c] = tbl[c].fillna(n_stunden * n_people)
-        st.warning(f"Filled {n_na} missing values for column {c}")
+    tbl.loc[tbl[c].isna(), f"{c}_fill"] = True
+    tbl[c] = tbl[c].fillna(tbl_mean[c.lstrip("_")])
+#    n_na = tbl[c].isna().sum()
+#    if n_na > 0:
+#        tbl[c] = tbl[c].fillna(n_stunden * n_people)
+#        st.warning(f"Filled {n_na} missing values for column {c}")
+
+tbl.reset_index(inplace=True)
 
 ####Add column Reihenfolge
-if "Reihenfolge" not in tbl.columns:
-    tbl["Reihenfolge"] = tbl.index + 1
-tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
+tbl["Reihenfolge"].fillna(999, inplace=True)
+tbl.loc[tbl[dur_col].isna(), "Reihenfolge"] = 999
 tbl.sort_values("Reihenfolge", inplace=True)
+tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
 
 ####Add unique Name for each field
+tbl.loc[tbl[f"{dur_col}_fill"], "Wiesenabschnitt"] = tbl["Wiesenabschnitt"].str.upper()
+tbl.loc[tbl[f"{dur_col}_fill"], "Sorte"] = tbl["Sorte"].str.upper()
 tbl["ylab"] = (
     tbl["Reihenfolge"].astype(int).astype(str)
     + " "
-    + tbl["Wiese"]
+    + tbl["Wiesenabschnitt"]
     + " ("
     + tbl["Sorte"]
     + ")"
