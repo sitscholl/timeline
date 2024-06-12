@@ -63,6 +63,7 @@ with st.sidebar:
         "Dauer Mittagspause [Stunden]", value=1.5, min_value=0.0, max_value=23.0
     )
 
+    snd_work = st.checkbox("Sonntag Arbeiten?")
     st.write(f"Tägliche Arbeitsstunden: {(_HOUR_END - _HOUR_START) - _BREAKS}h")
 
 if _HOUR_END < _HOUR_START:
@@ -71,9 +72,6 @@ if _HOUR_END < _HOUR_START:
 #### Compute variables
 dur_col = {"Zupfen": "_Zupfen [h]", "Ernte": "_Ernte [h]"}[type]
 n_stunden = (_HOUR_END - _HOUR_START) - _BREAKS
-
-workh_dict = defaultdict(lambda: n_stunden)
-workh_dict[6] = n_stunden
 
 _HOUR_START_INT = int(_HOUR_START)
 _MINUTES_START_INT = int((_HOUR_START * 60) % 60)
@@ -169,7 +167,9 @@ for h in tbl_plot[dur_col]:
 
         # Available working hours on current date until feierabend
         # If hour <= 12: Mittagspause mit einbeziehen
-        if curr_date.hour <= 12:
+        if (curr_date.weekday() == 6) & (not snd_work):
+            working_hours = 0
+        elif curr_date.hour <= 12:
             working_hours = _HOUR_END - curr_date.hour - curr_date.minute / 60 - _BREAKS
         else:
             working_hours = _HOUR_END - curr_date.hour - curr_date.minute / 60
