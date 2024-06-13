@@ -119,6 +119,7 @@ tbl.set_index(["Wiesenabschnitt", "Sorte"], inplace=True)
 ##### Fill missing values
 for c in ["_Zupfen [h]", "_Ernte [h]"]:
     tbl.loc[tbl[c].isna(), f"{c}_fill"] = True
+    tbl[f"{c}_fill"].fillna(False, inplace=True)
     tbl[c] = tbl[c].fillna(tbl_mean[c.lstrip("_")])
 #    n_na = tbl[c].isna().sum()
 #    if n_na > 0:
@@ -218,7 +219,7 @@ fig = px.timeline(
 fig.update_xaxes(
     showgrid=True,
     ticks="outside",
-    ticklabelmode="period",
+    # ticklabelmode="period",
     tickcolor="black",
     gridcolor="black",
     ticklen=10,
@@ -232,6 +233,7 @@ fig.update_xaxes(
 
 #### Format y-axis
 fig.update_yaxes(title="")
+# fig.update_layout(hovermode="x unified")
 
 #### Add red line for today
 fig.add_vline(
