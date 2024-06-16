@@ -148,8 +148,8 @@ tbl["ylab"] = (
 )
 
 #### Determine Reihenfolge
-sorted_items = sort_items(tbl['ylab'].unique())
-st.write(sorted_items)
+#sorted_items = sort_items(tbl['ylab'].unique())
+#st.write(sorted_items)
 
 ####Editable Dataframe
 with st.expander("Edit data"):
