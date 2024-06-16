@@ -22,6 +22,7 @@ from gspread_dataframe import get_as_dataframe
 import datetime
 from datetime import timedelta
 from collections import defaultdict
+from streamlit_sortables import sort_items
 
 st.set_page_config("Timeline", initial_sidebar_state="collapsed")
 
@@ -145,6 +146,10 @@ tbl["ylab"] = (
     + tbl["Sorte"]
     + ")"
 )
+
+#### Determine Reihenfolge
+sorted_items = sort_items(tbl['ylab'].unique())
+st.write(sorted_items)
 
 ####Editable Dataframe
 with st.expander("Edit data"):
