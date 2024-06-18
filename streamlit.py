@@ -147,9 +147,15 @@ tbl["ylab"] = (
     + ")"
 )
 
-#### Determine Reihenfolge
-#sorted_items = sort_items(tbl['ylab'].unique())
-#st.write(sorted_items)
+#### Manual sorting plugin
+st.markdown("**Reihenfolge ändern:**")
+sorted_items = sort_items(list(tbl["ylab"].unique()))
+sorted_man = (
+    pd.DataFrame(sorted_items, columns=["ylab"])
+    .rename_axis("Reihenfolge")
+    .reset_index()
+)
+tbl = sorted_man.merge(tbl.drop('Reihenfolge', axis = 1), on = 'ylab', how = 'left')
 
 ####Editable Dataframe
 with st.expander("Edit data"):
@@ -158,7 +164,6 @@ with st.expander("Edit data"):
     )
 
 ####Prepare columns for End Date calculation and plotting
-tbl_plot.sort_values("Reihenfolge", inplace=True)
 tbl_plot[f"{dur_col}_re"] = (tbl_plot[dur_col] / (n_people * n_stunden)).round(
     2
 ).astype(str) + " days"
