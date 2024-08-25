@@ -51,14 +51,14 @@ type = st.selectbox(
 estart = st.date_input("Erntebeginn", value=datetime.date(2024, 9, 16))
 with st.sidebar:
     n_people = st.number_input(
-        "Arbeiter", value=9.0 if type == "Ernte" else 4.0, min_value=0.0, step=0.5
+        "Arbeiter", value=8 if type == "Ernte" else 4.0, min_value=0.0, step=0.5
     )
 
     _HOUR_START = st.number_input(
         "Arbeitsbeginn [Stunde]", value=7.5, min_value=0.0, max_value=23.0
     )
     _HOUR_END = st.number_input(
-        "Arbeitsende [Stunde]", value=18.0, min_value=0.0, max_value=23.0
+        "Arbeitsende [Stunde]", value=18.5, min_value=0.0, max_value=23.0
     )
     _BREAKS = st.number_input(
         "Dauer Mittagspause [Stunden]", value=1.5, min_value=0.0, max_value=23.0
