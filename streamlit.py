@@ -114,7 +114,7 @@ tbl_mean = (
 )
 
 ####Filter
-tbl = tbl.loc[(tbl["Jahr"] == 2024)]  # (tbl["Sortengruppe"] == "Hauptsorte") &
+tbl = tbl.loc[(tbl["Jahr"] == 2024) & (tbl["Sortengruppe"] == "Hauptsorte")]
 tbl.set_index(["Wiesenabschnitt", "Sorte"], inplace=True)
 
 ##### Fill missing values
