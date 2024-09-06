@@ -138,8 +138,10 @@ tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
 ####Add unique Name for each field & aggregate to field level
 tbl.loc[tbl[f"{dur_col}_fill"], "Wiesenabschnitt"] = tbl["Wiesenabschnitt"].str.upper()
 tbl.loc[tbl[f"{dur_col}_fill"], "Sorte"] = tbl["Sorte"].str.upper()
+tbl["Wiese"] = tbl["Wiesenabschnitt"].str.split(" ", expand=True)[0]
+st.dataframe(tbl)
 tbl = (
-    tbl.groupby(tbl["Wiesenabschnitt"].str.split(" ")[0], as_index=False)
+    tbl.groupby("Wiese", as_index=False)
     .agg(
         Reihenfolge=("Reihenfolge", np.min),
         Zupfen=("_Zupfen [h]", np.sum),
