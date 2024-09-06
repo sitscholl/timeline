@@ -161,7 +161,7 @@ tbl = (
 tbl["ylab"] = (
     tbl["Reihenfolge"].astype(int).astype(str)
     + " "
-    + tbl["Wiesenabschnitt"]
+    + tbl["Wiese"]
     + " ("
     + tbl["Sorte"]
     + ")"
