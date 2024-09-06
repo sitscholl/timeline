@@ -132,7 +132,6 @@ tbl.reset_index(inplace=True)
 ####Add column Reihenfolge
 tbl["Reihenfolge"].fillna(999, inplace=True)
 tbl.loc[tbl[dur_col].isna(), "Reihenfolge"] = 999
-tbl.sort_values("Reihenfolge", inplace=True)
 tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
 
 ####Add unique Name for each field & aggregate to field level
@@ -159,6 +158,7 @@ tbl = (
         }
     )
 )
+tbl.sort_values("Reihenfolge", inplace=True)
 tbl["ylab"] = (
     tbl["Reihenfolge"].astype(int).astype(str)
     + " "
