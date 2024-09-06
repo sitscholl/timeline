@@ -64,7 +64,7 @@ with st.sidebar:
         "Dauer Mittagspause [Stunden]", value=1.5, min_value=0.0, max_value=23.0
     )
 
-    snd_work = st.checkbox("Sonntag Arbeiten?")
+    snd_work = st.checkbox("Sonntag Arbeiten?", value=True)
     st.write(f"Tägliche Arbeitsstunden: {(_HOUR_END - _HOUR_START) - _BREAKS}h")
 
 if _HOUR_END < _HOUR_START:
@@ -135,9 +135,27 @@ tbl.loc[tbl[dur_col].isna(), "Reihenfolge"] = 999
 tbl.sort_values("Reihenfolge", inplace=True)
 tbl = tbl[["Reihenfolge"] + [i for i in tbl.columns if i != "Reihenfolge"]]
 
-####Add unique Name for each field
+####Add unique Name for each field & aggregate to field level
 tbl.loc[tbl[f"{dur_col}_fill"], "Wiesenabschnitt"] = tbl["Wiesenabschnitt"].str.upper()
 tbl.loc[tbl[f"{dur_col}_fill"], "Sorte"] = tbl["Sorte"].str.upper()
+tbl = (
+    tbl.groupby(tbl["Wiesenabschnitt"].str.split(" ")[0], as_index=False)
+    .agg(
+        Reihenfolge=("Reihenfolge", np.min),
+        Zupfen=("_Zupfen [h]", np.sum),
+        Ernte=("_Ernte [h]", np.sum),
+        Kisten=("_Kisten [n]", np.sum),
+        Ertrag=("_Ertrag [kg]", np.sum),
+    )
+    .rename(
+        columns={
+            "Zupfen": "_Zupfen [h]",
+            "Ernte": "_Ernte [h]",
+            "Kisten": "_Kisten [n]",
+            "Ertrag": "_Ertrag [kg]",
+        }
+    )
+)
 tbl["ylab"] = (
     tbl["Reihenfolge"].astype(int).astype(str)
     + " "
@@ -155,7 +173,7 @@ sorted_man = (
     .rename_axis("Reihenfolge")
     .reset_index()
 )
-tbl = sorted_man.merge(tbl.drop('Reihenfolge', axis = 1), on = 'ylab', how = 'left')
+tbl = sorted_man.merge(tbl.drop("Reihenfolge", axis=1), on="ylab", how="left")
 
 ####Editable Dataframe
 with st.expander("Edit data"):
