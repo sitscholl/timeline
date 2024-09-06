@@ -148,6 +148,7 @@ tbl = (
         Ernte=("_Ernte [h]", np.sum),
         Kisten=("_Kisten [n]", np.sum),
         Ertrag=("_Ertrag [kg]", np.sum),
+        Sorte=("Sorte", lambda x: ", ".join(x.unique())),
     )
     .rename(
         columns={
