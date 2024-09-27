@@ -58,7 +58,7 @@ with st.sidebar:
         "Arbeitsbeginn [Stunde]", value=7.5, min_value=0.0, max_value=23.0
     )
     _HOUR_END = st.number_input(
-        "Arbeitsende [Stunde]", value=18.5, min_value=0.0, max_value=23.0
+        "Arbeitsende [Stunde]", value=18, min_value=0.0, max_value=23.0
     )
     _BREAKS = st.number_input(
         "Dauer Mittagspause [Stunden]", value=1.5, min_value=0.0, max_value=23.0
